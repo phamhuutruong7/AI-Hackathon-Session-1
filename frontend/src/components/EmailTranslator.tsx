@@ -57,7 +57,7 @@ const EmailTranslator = () => {
         source_language: sourceLanguage,
       });
 
-      setTranslatedText(response.translated_content || response.content || 'Translation completed');
+      setTranslatedText(response.result.content);
       
       toast({
         title: "Translation Complete!",

@@ -1,6 +1,7 @@
 
 const API_BASE_URL = '/api/v1';
 
+// Template interfaces
 export interface EmailTemplate {
   id: number;
   title: string;
@@ -30,6 +31,7 @@ export interface EmailTemplateUpdate {
   is_active?: boolean;
 }
 
+// Request interfaces
 export interface EmailGenerateRequest {
   purpose: string;
   context?: string;
@@ -41,6 +43,21 @@ export interface EmailTranslateRequest {
   content: string;
   target_language: string;
   source_language?: string;
+}
+
+// Response interfaces
+export interface EmailContent {
+  title: string;
+  subject: string;
+  content: string;
+}
+
+export interface EmailGenerateResponse {
+  result: EmailContent;
+}
+
+export interface EmailTranslateResponse {
+  result: EmailContent;
 }
 
 // Template management
@@ -98,7 +115,7 @@ export const deleteEmailTemplate = async (templateId: number): Promise<void> => 
 };
 
 // Email generation
-export const generateEmail = async (request: EmailGenerateRequest): Promise<any> => {
+export const generateEmail = async (request: EmailGenerateRequest): Promise<EmailGenerateResponse> => {
   const response = await fetch(`${API_BASE_URL}/email-templates/generate`, {
     method: 'POST',
     headers: {
@@ -113,7 +130,7 @@ export const generateEmail = async (request: EmailGenerateRequest): Promise<any>
 };
 
 // Email translation
-export const translateEmail = async (request: EmailTranslateRequest): Promise<any> => {
+export const translateEmail = async (request: EmailTranslateRequest): Promise<EmailTranslateResponse> => {
   const response = await fetch(`${API_BASE_URL}/email-templates/translate`, {
     method: 'POST',
     headers: {

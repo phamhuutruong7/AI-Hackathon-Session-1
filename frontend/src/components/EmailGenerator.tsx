@@ -56,9 +56,9 @@ const EmailGenerator = ({ templates, isLoading }: EmailGeneratorProps) => {
         language: selectedTemplate.language,
       });
 
-      // The API response structure may vary, adapt as needed
-      setGeneratedSubject(response.subject || selectedTemplate.subject);
-      setGeneratedEmail(response.content || response.email || 'Generated email content');
+      // Use the structured response from the API
+      setGeneratedSubject(response.result.subject);
+      setGeneratedEmail(response.result.content);
       
       toast({
         title: "Email Generated!",

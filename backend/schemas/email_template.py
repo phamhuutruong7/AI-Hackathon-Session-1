@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
 
@@ -45,3 +45,18 @@ class EmailTranslateRequest(BaseModel):
     content: str
     target_language: str
     source_language: str = "en"
+
+
+# Response models for generated content
+class EmailContent(BaseModel):
+    title: str = Field(..., description="The title of the email")
+    subject: str = Field(..., description="The subject line of the email")
+    content: str = Field(..., description="The full body content of the email")
+
+
+class EmailGenerateResponse(BaseModel):
+    result: EmailContent = Field(..., description="The generated email content")
+
+
+class EmailTranslateResponse(BaseModel):
+    result: EmailContent = Field(..., description="The translated email content")

@@ -6,14 +6,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from models.email_template import EmailTemplate
 from schemas.email_template import (
     EmailGenerateRequest,
+    EmailGenerateResponse,
     EmailTemplateCreate,
     EmailTemplateResponse,
     EmailTemplateUpdate,
     EmailTranslateRequest,
+    EmailTranslateResponse,
+    EmailContent,
 )
 from sqlalchemy.orm import Session
 
-from ..common import email_templates_common
+from common import email_templates_common
 
 router = APIRouter()
 
@@ -83,19 +86,49 @@ async def delete_email_template(template_id: int, db: Session = Depends(get_db))
     return {"message": "Email template deleted successfully"}
 
 
-@router.post("/email-templates/generate")
+@router.post("/email-templates/generate", response_model=EmailGenerateResponse)
 async def generate_email(request: EmailGenerateRequest):
     """Generate an email based on purpose and context"""
-    # TODO: Implement AI-powered email generation
-    # This is a placeholder for the actual implementation
-    return email_templates_common.generate(request.purpose, request.context)
+    try:
+        # Call the improved generate function with all parameters
+        result_dict = email_templates_common.generate(
+            purpose=request.purpose,
+            context=request.context,
+            tone=request.tone
+        )
+        
+        # Create EmailContent model from the result
+        email_content = EmailContent(
+            title=result_dict.get("title", "Generated Email"),
+            subject=result_dict.get("subject", "Generated Subject"),
+            content=result_dict.get("content", "")
+        )
+        
+        # Return the response with the structured data
+        return {"result": email_content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/email-templates/translate")
+@router.post("/email-templates/translate", response_model=EmailTranslateResponse)
 async def translate_email(request: EmailTranslateRequest):
     """Translate an email to a different language"""
-    # TODO: Implement translation service integration
-    # This is a placeholder for the actual implementation
-    translated_content = f"[TRANSLATED TO {request.target_language.upper()}] {request.content}"
-    
-    return email_templates_common.translate(translated_content)
+    try:
+        # Call the improved translate function with all parameters
+        result_dict = email_templates_common.translate(
+            content=request.content,
+            target_language=request.target_language,
+            source_language=request.source_language
+        )
+        
+        # Create EmailContent model from the result
+        email_content = EmailContent(
+            title=result_dict.get("title", "Translated Email"),
+            subject=result_dict.get("subject", "Translated Subject"),
+            content=result_dict.get("content", "")
+        )
+        
+        # Return the response with the structured data
+        return {"result": email_content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
