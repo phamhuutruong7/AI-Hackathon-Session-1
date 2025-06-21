@@ -1,15 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+import re
 from typing import List
+
 from database import get_db
+from fastapi import APIRouter, Depends, HTTPException
 from models.email_template import EmailTemplate
 from schemas.email_template import (
-    EmailTemplateCreate,
-    EmailTemplateUpdate, 
-    EmailTemplateResponse,
     EmailGenerateRequest,
-    EmailTranslateRequest
+    EmailTemplateCreate,
+    EmailTemplateResponse,
+    EmailTemplateUpdate,
+    EmailTranslateRequest,
 )
+from sqlalchemy.orm import Session
+
+from ..common import email_templates_common
 
 router = APIRouter()
 
@@ -84,25 +88,7 @@ async def generate_email(request: EmailGenerateRequest):
     """Generate an email based on purpose and context"""
     # TODO: Implement AI-powered email generation
     # This is a placeholder for the actual implementation
-    generated_content = f"""
-    Subject: Generated Email for {request.purpose}
-    
-    Dear [Recipient],
-    
-    This is a generated email template for {request.purpose}.
-    Context: {request.context or 'No specific context provided'}
-    Tone: {request.tone}
-    
-    Best regards,
-    [Your Name]
-    """
-    
-    return {
-        "subject": f"Generated Email for {request.purpose}",
-        "content": generated_content.strip(),
-        "purpose": request.purpose,
-        "language": request.language
-    }
+    return email_templates_common.generate(request.purpose, request.context)
 
 
 @router.post("/email-templates/translate")
@@ -112,9 +98,4 @@ async def translate_email(request: EmailTranslateRequest):
     # This is a placeholder for the actual implementation
     translated_content = f"[TRANSLATED TO {request.target_language.upper()}] {request.content}"
     
-    return {
-        "original_content": request.content,
-        "translated_content": translated_content,
-        "source_language": request.source_language,
-        "target_language": request.target_language
-    }
+    return email_templates_common.translate(translated_content)
