@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import os
 from database import engine, Base
-from routers import email_templates
+from routers import email_templates, email_assistant
+from models import conversation, email_template  # Import models to register them
 
 
 @asynccontextmanager
@@ -31,6 +32,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(email_templates.router, prefix="/api/v1", tags=["email-templates"])
+app.include_router(email_assistant.router, prefix="/api/v1", tags=["email-assistant"])
 
 
 @app.get("/")

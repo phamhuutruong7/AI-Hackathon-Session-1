@@ -2,12 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mail, MessageSquare, Languages, FileText } from 'lucide-react';
+import { Mail, MessageSquare, Languages, FileText, Bot } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import EmailGenerator from '@/components/EmailGenerator';
 import EmailResponder from '@/components/EmailResponder';
 import EmailTranslator from '@/components/EmailTranslator';
 import TemplateManager from '@/components/TemplateManager';
+import { EmailAssistant } from '@/components/EmailAssistant';
 import { getEmailTemplates, EmailTemplate } from '@/services/emailApi';
 import { toast } from "@/hooks/use-toast";
 
@@ -54,28 +55,32 @@ const Index = () => {
   const displayTemplates = error ? fallbackTemplates : templates;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-8">
+    <div className="h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 flex flex-col overflow-hidden">
+      <div className="container mx-auto px-4 py-4 flex flex-col h-full">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-4">
-            <div className="p-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full">
-              <Mail className="h-8 w-8 text-white" />
+        <div className="text-center mb-6 flex-shrink-0">
+          <div className="flex items-center justify-center mb-3">
+            <div className="p-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full">
+              <Mail className="h-6 w-6 text-white" />
             </div>
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2">
             Email Wizard
           </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Your AI-powered email assistant for generating templates, writing responses, and translating messages
+          <p className="text-base text-gray-600 max-w-2xl mx-auto">
+            Your intelligent AI email assistant for natural conversation-based email creation, templates, responses, and translations
           </p>
         </div>
 
         {/* Main Content */}
-        <Card className="max-w-6xl mx-auto shadow-xl border-0 bg-white/70 backdrop-blur-sm">
-          <CardContent className="p-6">
-            <Tabs defaultValue="generate" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 mb-6 bg-gray-100/50">
+        <Card className="max-w-6xl mx-auto shadow-xl border-0 bg-white/70 backdrop-blur-sm flex-1 flex flex-col min-h-0">
+          <CardContent className="p-4 flex-1 flex flex-col min-h-0">
+            <Tabs defaultValue="assistant" className="w-full flex-1 flex flex-col min-h-0">
+              <TabsList className="grid w-full grid-cols-5 mb-4 bg-gray-100/50 flex-shrink-0">
+                <TabsTrigger value="assistant" className="flex items-center gap-2">
+                  <Bot className="h-4 w-4" />
+                  AI Assistant
+                </TabsTrigger>
                 <TabsTrigger value="generate" className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
                   Generate
@@ -94,19 +99,23 @@ const Index = () => {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="generate">
+              <TabsContent value="assistant" className="flex-1 min-h-0">
+                <EmailAssistant />
+              </TabsContent>
+
+              <TabsContent value="generate" className="flex-1 min-h-0 overflow-auto">
                 <EmailGenerator templates={displayTemplates} isLoading={isLoading} />
               </TabsContent>
 
-              <TabsContent value="respond">
+              <TabsContent value="respond" className="flex-1 min-h-0 overflow-auto">
                 <EmailResponder />
               </TabsContent>
 
-              <TabsContent value="translate">
+              <TabsContent value="translate" className="flex-1 min-h-0 overflow-auto">
                 <EmailTranslator />
               </TabsContent>
 
-              <TabsContent value="templates">
+              <TabsContent value="templates" className="flex-1 min-h-0 overflow-auto">
                 <TemplateManager 
                   templates={displayTemplates} 
                   onTemplatesChange={refetch}
