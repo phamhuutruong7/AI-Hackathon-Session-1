@@ -3,8 +3,10 @@ import json
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from database import get_db
 from models.conversation import Conversation, EmailDetails
+from models.message import Message
 from schemas.email_assistant import (
     EmailAssistantRequest,
     EmailAssistantResponse,
@@ -37,16 +39,52 @@ async def chat_with_assistant(
         # Extract email details from user message
         extracted_data = extract_email_details(request.user_message)
         
-        # Save conversation to database
-        conversation = Conversation(
+        # Store user message
+        user_message = Message(
             conversation_id=request.conversation_id,
-            user_message=request.user_message,
-            extracted_details=extracted_data,
-            status="in_progress"
+            message_type="user",
+            content=request.user_message
         )
-        db.add(conversation)
-        db.commit()
-        db.refresh(conversation)
+        db.add(user_message)
+        
+        # Check if conversation already exists
+        existing_conversation = db.query(Conversation).filter(
+            Conversation.conversation_id == request.conversation_id
+        ).first()
+        
+        if not existing_conversation:
+            # Create new conversation record
+            try:
+                conversation = Conversation(
+                    conversation_id=request.conversation_id,
+                    user_message=request.user_message,
+                    extracted_details=extracted_data,
+                    status="in_progress"
+                )
+                db.add(conversation)
+                db.commit()
+                db.refresh(conversation)
+            except IntegrityError:
+                # If there's a race condition and conversation was created by another request
+                db.rollback()
+                existing_conversation = db.query(Conversation).filter(
+                    Conversation.conversation_id == request.conversation_id
+                ).first()
+                if existing_conversation:
+                    conversation = existing_conversation
+                    conversation.user_message = request.user_message
+                    conversation.extracted_details = extracted_data
+                    conversation.status = "in_progress"
+                    db.commit()
+                else:
+                    raise HTTPException(status_code=500, detail="Failed to create or find conversation")
+        else:
+            # Update existing conversation with new user message
+            conversation = existing_conversation
+            conversation.user_message = request.user_message
+            conversation.extracted_details = extracted_data
+            conversation.status = "in_progress"
+            db.commit()
         
         # Create or update email details
         email_details = db.query(EmailDetails).filter(
@@ -120,6 +158,14 @@ async def chat_with_assistant(
             
             # Update conversation with assistant response
             conversation.assistant_response = response_message
+            
+            # Store assistant message
+            assistant_message = Message(
+                conversation_id=request.conversation_id,
+                message_type="assistant",
+                content=response_message
+            )
+            db.add(assistant_message)
             db.commit()
             
             return EmailAssistantResponse(
@@ -143,6 +189,14 @@ async def chat_with_assistant(
             
             # Update conversation with assistant response
             conversation.assistant_response = confirmation_message
+            
+            # Store assistant message
+            assistant_message = Message(
+                conversation_id=request.conversation_id,
+                message_type="assistant",
+                content=confirmation_message
+            )
+            db.add(assistant_message)
             db.commit()
             
             return EmailAssistantResponse(
@@ -164,22 +218,42 @@ async def confirm_and_generate(
 ):
     """Confirm details and generate email"""
     try:
+        print(f"DEBUG: Received request: {request}")  # Debug log
+        
         # Get email details
         email_details = db.query(EmailDetails).filter(
             EmailDetails.conversation_id == request.conversation_id
         ).first()
         
         if not email_details:
+            print(f"DEBUG: No email details found for conversation_id: {request.conversation_id}")
             raise HTTPException(status_code=404, detail="Email details not found")
         
         # Update with confirmed details
         confirmed = request.confirmed_details
-        email_details.recipient = confirmed.recipient
-        email_details.purpose = confirmed.purpose
-        email_details.tone = confirmed.tone or "professional"
-        email_details.language = confirmed.language or "en"
-        email_details.context = confirmed.context
-        email_details.additional_info = confirmed.additional_info
+        print(f"DEBUG: Confirmed details: {confirmed}")
+        
+        if not confirmed:
+            raise HTTPException(status_code=400, detail="Confirmed details are required")
+        
+        # Safely update fields only if they exist in confirmed details
+        if hasattr(confirmed, 'recipient') and confirmed.recipient is not None:
+            email_details.recipient = confirmed.recipient
+        if hasattr(confirmed, 'purpose') and confirmed.purpose is not None:
+            email_details.purpose = confirmed.purpose
+        if hasattr(confirmed, 'tone') and confirmed.tone is not None:
+            email_details.tone = confirmed.tone
+        else:
+            email_details.tone = "professional"
+        if hasattr(confirmed, 'language') and confirmed.language is not None:
+            email_details.language = confirmed.language
+        else:
+            email_details.language = "en"
+        if hasattr(confirmed, 'context') and confirmed.context is not None:
+            email_details.context = confirmed.context
+        if hasattr(confirmed, 'additional_info') and confirmed.additional_info is not None:
+            email_details.additional_info = confirmed.additional_info
+        
         email_details.is_confirmed = True
         
         # Generate email
@@ -215,7 +289,12 @@ async def confirm_and_generate(
             requires_confirmation=False
         )
         
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions as-is
     except Exception as e:
+        print(f"DEBUG: Exception in confirm_and_generate: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error generating email: {str(e)}")
 
 
@@ -226,29 +305,49 @@ async def revise_email_endpoint(
 ):
     """Revise email based on user feedback"""
     try:
+        print(f"DEBUG: Revise request: {request}")  # Debug log
+        
         # Get email details
         email_details = db.query(EmailDetails).filter(
             EmailDetails.conversation_id == request.conversation_id
         ).first()
         
         if not email_details:
+            print(f"DEBUG: No email details found for conversation_id: {request.conversation_id}")
             raise HTTPException(status_code=404, detail="Email details not found")
         
         # Revise the email
         revised_email = revise_email(request.current_email, request.feedback)
         email_details.generated_email = revised_email
         
-        # Save new conversation entry
-        conversation = Conversation(
+        # Store user message
+        user_message = Message(
             conversation_id=request.conversation_id,
-            user_message=f"Revision request: {request.feedback}",
-            assistant_response="I've revised your email based on your feedback.",
-            status="completed"
+            message_type="user",
+            content=f"Revision request: {request.feedback}"
         )
-        db.add(conversation)
-        db.commit()
+        db.add(user_message)
         
         response_message = "I've revised your email based on your feedback. Please review the changes below."
+        
+        # Store assistant message
+        assistant_message = Message(
+            conversation_id=request.conversation_id,
+            message_type="assistant",
+            content=response_message
+        )
+        db.add(assistant_message)
+        
+        # Update existing conversation status instead of creating a new one
+        existing_conversation = db.query(Conversation).filter(
+            Conversation.conversation_id == request.conversation_id
+        ).first()
+        
+        if existing_conversation:
+            existing_conversation.assistant_response = response_message
+            existing_conversation.status = "completed"
+        
+        db.commit()
         
         return EmailAssistantResponse(
             conversation_id=request.conversation_id,
@@ -258,7 +357,12 @@ async def revise_email_endpoint(
             requires_confirmation=False
         )
         
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions as-is
     except Exception as e:
+        print(f"DEBUG: Exception in revise_email_endpoint: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error revising email: {str(e)}")
 
 

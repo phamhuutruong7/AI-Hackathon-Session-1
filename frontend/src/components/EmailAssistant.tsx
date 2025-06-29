@@ -229,7 +229,7 @@ export function EmailAssistant() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-12rem)] max-w-6xl mx-auto">
+    <div className="flex h-full max-w-6xl mx-auto">
       {/* Chat Interface */}
       <div className="flex-1 flex flex-col min-h-0">
         <Card className="flex-1 flex flex-col h-full">
@@ -326,7 +326,8 @@ export function EmailAssistant() {
       </div>
 
       {/* Side Panel */}
-      <div className="w-80 ml-4 space-y-4 overflow-y-auto max-h-full">
+      <div className="w-80 ml-4 flex flex-col min-h-0 max-h-full">
+        <div className="overflow-y-auto flex-1 space-y-4">
         {/* Email Details Confirmation */}
         {showConfirmation && extractedDetails && (
           <EmailDetailsConfirmation
@@ -380,9 +381,29 @@ export function EmailAssistant() {
                   <p className="text-sm">{extractedDetails.context}</p>
                 </div>
               )}
+              {extractedDetails.additional_info && Object.keys(extractedDetails.additional_info).length > 0 && (
+                <div>
+                  <span className="text-xs font-medium text-muted-foreground">Additional Info:</span>
+                  <div className="text-sm">
+                    {typeof extractedDetails.additional_info === 'object' ? (
+                      <div className="space-y-1">
+                        {Object.entries(extractedDetails.additional_info).map(([key, value]) => (
+                          <div key={key} className="flex items-start gap-1">
+                            <span className="text-xs text-muted-foreground">•</span>
+                            <span>{String(value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>{String(extractedDetails.additional_info)}</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
+        </div>
       </div>
     </div>
   );
