@@ -7,7 +7,7 @@ export interface ExtractedEmailDetails {
   tone?: string;
   language?: string;
   context?: string;
-  additional_info?: string;
+  additional_info?: Record<string, any>;
 }
 
 export interface FollowUpQuestion {
@@ -42,6 +42,7 @@ export interface EmailAssistantResponse {
 export interface EmailConfirmationRequest {
   conversation_id: string;
   confirmed_details: ExtractedEmailDetails;
+  action?: string;
 }
 
 export interface EmailRevisionRequest {

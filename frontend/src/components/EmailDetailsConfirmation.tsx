@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -50,18 +50,57 @@ export function EmailDetailsConfirmation({
     tone: details.tone || 'professional',
     language: details.language || 'en',
     context: details.context || '',
-    additional_info: details.additional_info || ''
+    additional_info: details.additional_info || {}
   });
 
-  const handleInputChange = (field: keyof ExtractedEmailDetails, value: string) => {
+  // Helper to manage additional_info as text input
+  const [additionalInfoText, setAdditionalInfoText] = useState<string>(() => {
+    if (typeof details.additional_info === 'string') {
+      return details.additional_info;
+    } else if (typeof details.additional_info === 'object' && details.additional_info) {
+      // If it's an object with a 'notes' field, extract just the notes
+      if ('notes' in details.additional_info) {
+        return String(details.additional_info.notes);
+      }
+      // Otherwise, show key-value pairs in a readable format
+      return Object.entries(details.additional_info)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join('\n');
+    }
+    return '';
+  });
+
+  // Update formData when additionalInfoText changes
+  useEffect(() => {
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      additional_info: additionalInfoText ? { notes: additionalInfoText } : {}
     }));
+  }, [additionalInfoText]);
+
+  const handleInputChange = (field: keyof ExtractedEmailDetails, value: string) => {
+    if (field === 'additional_info') {
+      setAdditionalInfoText(value);
+      // Convert text to object for the form data
+      setFormData(prev => ({
+        ...prev,
+        additional_info: value ? { notes: value } : {}
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
   };
 
   const handleConfirm = () => {
-    onConfirm(formData);
+    // Ensure additional_info is properly formatted as object
+    const confirmedData = {
+      ...formData,
+      additional_info: additionalInfoText ? { notes: additionalInfoText } : {}
+    };
+    onConfirm(confirmedData);
   };
 
   const isFormValid = formData.recipient && formData.purpose && formData.context;
@@ -158,17 +197,91 @@ export function EmailDetailsConfirmation({
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           <Label htmlFor="additional_info" className="text-xs font-medium">
             Additional Information
+            <span className="text-muted-foreground font-normal ml-1">(Optional)</span>
           </Label>
+          
+          {/* Quick add buttons for common info */}
+          <div className="flex flex-wrap gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-xs h-6 px-2"
+              onClick={() => {
+                const timeInfo = "Meeting time: ";
+                if (!additionalInfoText.includes("Meeting time:")) {
+                  setAdditionalInfoText(prev => prev ? `${prev}\n${timeInfo}` : timeInfo);
+                }
+              }}
+            >
+              + Time
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-xs h-6 px-2"
+              onClick={() => {
+                const locationInfo = "Location: ";
+                if (!additionalInfoText.includes("Location:")) {
+                  setAdditionalInfoText(prev => prev ? `${prev}\n${locationInfo}` : locationInfo);
+                }
+              }}
+            >
+              + Location
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-xs h-6 px-2"
+              onClick={() => {
+                const deadlineInfo = "Deadline: ";
+                if (!additionalInfoText.includes("Deadline:")) {
+                  setAdditionalInfoText(prev => prev ? `${prev}\n${deadlineInfo}` : deadlineInfo);
+                }
+              }}
+            >
+              + Deadline
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-xs h-6 px-2"
+              onClick={() => {
+                const contactInfo = "Contact preference: ";
+                if (!additionalInfoText.includes("Contact preference:")) {
+                  setAdditionalInfoText(prev => prev ? `${prev}\n${contactInfo}` : contactInfo);
+                }
+              }}
+            >
+              + Contact
+            </Button>
+          </div>
+          
           <Textarea
             id="additional_info"
-            value={formData.additional_info}
+            value={additionalInfoText}
             onChange={(e) => handleInputChange('additional_info', e.target.value)}
-            placeholder="Any additional details or special requirements..."
-            className="text-sm min-h-[60px]"
+            placeholder="Add any extra details, special requirements, or notes...
+
+Examples:
+• Meeting time: Monday at 9:00 AM
+• Property details: 3 bedroom house  
+• Contact preferences: Email preferred
+• Deadlines or urgency
+• Special instructions"
+            className="text-sm min-h-[80px] placeholder:text-xs"
           />
+          {additionalInfoText && (
+            <div className="text-xs text-muted-foreground">
+              💡 This information will be included in your email to provide more context
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2 pt-2">

@@ -38,13 +38,13 @@ class EmailAssistantResponse(BaseModel):
 class EmailConfirmationRequest(BaseModel):
     conversation_id: str
     confirmed_details: ExtractedEmailDetails
-    action: str = "generate"  # "generate" or "revise"
+    action: Optional[str] = "generate"  # "generate" or "revise"
 
 
 class EmailRevisionRequest(BaseModel):
     conversation_id: str
-    feedback: str
     current_email: Dict[str, Any]
+    feedback: str
 
 
 class ConversationHistory(BaseModel):
